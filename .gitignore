@@ -22,3 +22,7 @@ build/
 # Environment variables
 .env
 .env.local 
+
+## Report files
+reports/*
+!reports/.gitkeep

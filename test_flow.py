@@ -8,6 +8,8 @@ import argparse
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional
 import time
+from datetime import datetime
+import pathlib
 
 # Configure logging
 logging.basicConfig(
@@ -15,6 +17,90 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+class TimingTracker:
+    def __init__(self):
+        self.steps = {}
+        self.start_time = None
+        self.end_time = None
+        self.order_id = None
+
+    def set_order_id(self, order_id: int):
+        """Set the order ID for report naming"""
+        self.order_id = order_id
+
+    def start_step(self, step_name: str):
+        """Record the start time of a step"""
+        self.steps[step_name] = {
+            'start': datetime.now(),
+            'end': None,
+            'duration': None
+        }
+
+    def end_step(self, step_name: str):
+        """Record the end time of a step and calculate duration"""
+        if step_name in self.steps:
+            self.steps[step_name]['end'] = datetime.now()
+            duration = self.steps[step_name]['end'] - self.steps[step_name]['start']
+            self.steps[step_name]['duration'] = duration.total_seconds()
+
+    def start_flow(self):
+        """Record the start time of the entire flow"""
+        self.start_time = datetime.now()
+
+    def end_flow(self):
+        """Record the end time of the entire flow"""
+        self.end_time = datetime.now()
+
+    def generate_summary(self) -> Dict[str, Any]:
+        """Generate a summary of all timing information"""
+        if not self.start_time or not self.end_time:
+            return {}
+
+        total_duration = (self.end_time - self.start_time).total_seconds()
+        
+        summary = {
+            'flow_start': self.start_time.isoformat(),
+            'flow_end': self.end_time.isoformat(),
+            'total_duration_seconds': total_duration,
+            'order_id': self.order_id,
+            'steps': {}
+        }
+
+        for step_name, timing in self.steps.items():
+            summary['steps'][step_name] = {
+                'start': timing['start'].isoformat(),
+                'end': timing['end'].isoformat() if timing['end'] else None,
+                'duration_seconds': timing['duration']
+            }
+
+        return summary
+
+    def save_report(self, output_dir: str = 'reports'):
+        """Save the timing report to disk"""
+        if not self.start_time or not self.end_time:
+            logger.warning("Cannot save report: flow timing not complete")
+            return
+
+        # Create reports directory if it doesn't exist
+        reports_dir = pathlib.Path(output_dir)
+        reports_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create date-based subdirectory
+        date_dir = reports_dir / self.start_time.strftime('%Y-%m-%d')
+        date_dir.mkdir(exist_ok=True)
+
+        # Generate filename with timestamp and order ID
+        timestamp = self.start_time.strftime('%H-%M-%S')
+        filename = f"order_{self.order_id}_{timestamp}.json"
+        filepath = date_dir / filename
+
+        # Generate and save the report
+        summary = self.generate_summary()
+        with open(filepath, 'w') as f:
+            json.dump(summary, f, indent=2)
+
+        logger.info(f"Timing report saved to: {filepath}")
 
 class BCTestFlow:
     def __init__(self):
@@ -503,39 +589,59 @@ def main():
                       help='Maximum number of retry attempts for B2B order polling (default: 6)')
     parser.add_argument('--retry-delay', type=int, default=5,
                       help='Delay between retries in seconds for B2B order polling (default: 5)')
+    parser.add_argument('--reports-dir', type=str, default='reports',
+                      help='Directory to store timing reports (default: reports)')
     args = parser.parse_args()
+
+    # Initialize timing tracker
+    timing = TimingTracker()
+    timing.start_flow()
 
     try:
         # Initialize the test flow
         test_flow = BCTestFlow()
         
         # Create cart
+        timing.start_step('create_cart')
         cart = test_flow.create_cart()
         cart_id = cart['id']
+        timing.end_step('create_cart')
         
         # Add shipping address and get shipping options
+        timing.start_step('add_shipping_address')
         consignment_data = test_flow.add_shipping_address(cart_id)
         consignment_id = consignment_data['consignments'][0]['id']
+        timing.end_step('add_shipping_address')
         
         # Get the first available shipping option
         shipping_option_id = consignment_data['consignments'][0]['available_shipping_options'][0]['id']
         
         # Update shipping option
+        timing.start_step('update_shipping_option')
         test_flow.update_shipping_option(cart_id, consignment_id, shipping_option_id)
+        timing.end_step('update_shipping_option')
         
         # Add billing address
+        timing.start_step('add_billing_address')
         test_flow.add_billing_address(cart_id)
+        timing.end_step('add_billing_address')
         
         # Create order
+        timing.start_step('create_order')
         order = test_flow.create_order(cart_id)
         order_id = order['id']
+        timing.set_order_id(order_id)  # Set order ID for report naming
+        timing.end_step('create_order')
         logger.info(f"Order created successfully with ID: {order_id}")
         
         # Update order status to Awaiting Fulfillment
+        timing.start_step('update_order_status')
         updated_order = test_flow.update_order_status(order_id)
+        timing.end_step('update_order_status')
         logger.info(f"Order {order_id} status updated successfully")
         
         # Handle ESL retrieval based on selected method
+        timing.start_step('esl_retrieval')
         if args.b2b_order == 'default':
             # Default action: Manually create B2B order
             logger.info(f"Using default ESL retrieval method (manual B2B order creation)")
@@ -557,21 +663,39 @@ def main():
                 delay_seconds=args.retry_delay
             )
             logger.info(f"B2B order {order_id} retrieved successfully")
+        timing.end_step('esl_retrieval')
         
         # Send order to ERP
+        timing.start_step('erp_processing')
         logger.info(f"Starting ERP simulation for order {order_id}")
         erp_response = test_flow.send_to_erp(b2b_order)
         logger.info(f"ERP simulation completed for order {order_id}")
         logger.info(f"ERP response: {erp_response}")
+        timing.end_step('erp_processing')
         
         # Update B2B order with ERP response data
+        timing.start_step('update_b2b_order')
         logger.info(f"Updating B2B order {order_id} with ERP data")
         updated_b2b_order = test_flow.update_b2b_order(order_id, erp_response)
         logger.info(f"B2B order {order_id} updated successfully with ERP data")
+        timing.end_step('update_b2b_order')
         
         # Verify storefront order
+        timing.start_step('storefront_verification')
         verification_result = test_flow.verify_storefront_order(order_id)
         logger.info(f"Storefront verification result: {verification_result}")
+        timing.end_step('storefront_verification')
+        
+        # End flow timing
+        timing.end_flow()
+        
+        # Generate and log timing summary
+        summary = timing.generate_summary()
+        logger.info("Timing Summary:")
+        logger.info(json.dumps(summary, indent=2))
+        
+        # Save report to disk
+        timing.save_report(args.reports_dir)
         
         logger.info("Checkout process completed successfully")
         
