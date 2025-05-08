@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 import pathlib
 import asyncio
+import aiohttp
 
 # Configure logging
 logging.basicConfig(
@@ -135,10 +136,8 @@ class BCTestFlow:
             'Accept': 'application/json'
         }
 
-    def load_test_data(self, filename: str) -> Dict[str, Any]:
-        """
-        Load test data from a JSON file
-        """
+    async def load_test_data(self, filename: str) -> Dict[str, Any]:
+        """Load test data from a JSON file"""
         try:
             file_path = os.path.join('test-data', filename)
             with open(file_path, 'r') as f:
@@ -152,40 +151,32 @@ class BCTestFlow:
             logger.error(f"Invalid JSON in test data file: {filename}")
             raise
 
-    def create_cart(self) -> Dict[str, Any]:
-        """
-        Create a new cart using test data and return the cart data
-        """
+    async def create_cart(self, session: aiohttp.ClientSession) -> Dict[str, Any]:
+        """Create a new cart using test data"""
         try:
-            # Load cart payload from test data
-            payload = self.load_test_data('cart-payload.json')
-            
+            payload = await self.load_test_data('cart-payload.json')
             url = f"{self.bc_base_url}/v3/carts"
-            response = requests.post(url, headers=self.bc_headers, json=payload)
-            response.raise_for_status()
             
-            cart_data = response.json()
-            logger.info(f"Successfully created cart with ID: {cart_data['data']['id']}")
-            return cart_data['data']
-            
-        except requests.exceptions.RequestException as e:
+            async with session.post(url, headers=self.bc_headers, json=payload) as response:
+                response.raise_for_status()
+                cart_data = await response.json()
+                logger.info(f"Successfully created cart with ID: {cart_data['data']['id']}")
+                return cart_data['data']
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error creating cart: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def add_shipping_address(self, cart_id: str) -> Dict[str, Any]:
-        """
-        Add shipping address to the cart and get shipping options
-        """
+    async def add_shipping_address(self, session: aiohttp.ClientSession, cart_id: str) -> Dict[str, Any]:
+        """Add shipping address to the cart and get shipping options"""
         try:
-            shipping_address = self.load_test_data('checkout-shipping-address.json')
+            shipping_address = await self.load_test_data('checkout-shipping-address.json')
             
             # First get the cart to get line item IDs
             cart_url = f"{self.bc_base_url}/v3/carts/{cart_id}"
-            cart_response = requests.get(cart_url, headers=self.bc_headers)
-            cart_response.raise_for_status()
-            cart_data = cart_response.json()
+            async with session.get(cart_url, headers=self.bc_headers) as response:
+                response.raise_for_status()
+                cart_data = await response.json()
             
             # Get the first physical item ID
             line_item_id = cart_data['data']['line_items']['physical_items'][0]['id']
@@ -208,191 +199,126 @@ class BCTestFlow:
                 }
             ]
             
-            response = requests.post(url, headers=self.bc_headers, params=params, json=payload)
-            response.raise_for_status()
-            
-            consignment_data = response.json()
-            logger.info(f"Successfully added shipping address and got shipping options")
-            return consignment_data['data']
-            
-        except requests.exceptions.RequestException as e:
+            async with session.post(url, headers=self.bc_headers, params=params, json=payload) as response:
+                response.raise_for_status()
+                consignment_data = await response.json()
+                logger.info(f"Successfully added shipping address and got shipping options")
+                return consignment_data['data']
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error adding shipping address: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def update_shipping_option(self, cart_id: str, consignment_id: str, shipping_option_id: str) -> Dict[str, Any]:
-        """
-        Update the shipping option for a consignment
-        """
+    async def update_shipping_option(self, session: aiohttp.ClientSession, cart_id: str, consignment_id: str, shipping_option_id: str) -> Dict[str, Any]:
+        """Update the shipping option for a consignment"""
         try:
             url = f"{self.bc_base_url}/v3/checkouts/{cart_id}/consignments/{consignment_id}"
             payload = {
                 "shipping_option_id": shipping_option_id
             }
             
-            response = requests.put(url, headers=self.bc_headers, json=payload)
-            response.raise_for_status()
-            
-            consignment_data = response.json()
-            logger.info(f"Successfully updated shipping option")
-            return consignment_data['data']
-            
-        except requests.exceptions.RequestException as e:
+            async with session.put(url, headers=self.bc_headers, json=payload) as response:
+                response.raise_for_status()
+                consignment_data = await response.json()
+                logger.info(f"Successfully updated shipping option")
+                return consignment_data['data']
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error updating shipping option: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def add_billing_address(self, cart_id: str) -> Dict[str, Any]:
-        """
-        Add billing address to the checkout
-        """
+    async def add_billing_address(self, session: aiohttp.ClientSession, cart_id: str) -> Dict[str, Any]:
+        """Add billing address to the checkout"""
         try:
-            billing_address = self.load_test_data('checkout-billing-address.json')
+            billing_address = await self.load_test_data('checkout-billing-address.json')
             
             url = f"{self.bc_base_url}/v3/checkouts/{cart_id}/billing-address"
-            response = requests.post(url, headers=self.bc_headers, json=billing_address)
-            response.raise_for_status()
-            
-            billing_data = response.json()
-            logger.info(f"Successfully added billing address")
-            return billing_data['data']
-            
-        except requests.exceptions.RequestException as e:
+            async with session.post(url, headers=self.bc_headers, json=billing_address) as response:
+                response.raise_for_status()
+                billing_data = await response.json()
+                logger.info(f"Successfully added billing address")
+                return billing_data['data']
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error adding billing address: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def create_order(self, cart_id: str) -> Dict[str, Any]:
-        """
-        Create an order from the checkout
-        """
+    async def create_order(self, session: aiohttp.ClientSession, cart_id: str) -> Dict[str, Any]:
+        """Create an order from the checkout"""
         try:
             url = f"{self.bc_base_url}/v3/checkouts/{cart_id}/orders"
-            response = requests.post(url, headers=self.bc_headers)
-            response.raise_for_status()
-            
-            order_data = response.json()
-            logger.info(f"Successfully created order with ID: {order_data['data']['id']}")
-            return order_data['data']
-            
-        except requests.exceptions.RequestException as e:
+            async with session.post(url, headers=self.bc_headers) as response:
+                response.raise_for_status()
+                order_data = await response.json()
+                logger.info(f"Successfully created order with ID: {order_data['data']['id']}")
+                return order_data['data']
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error creating order: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def update_order_status(self, order_id: int) -> Dict[str, Any]:
-        """
-        Update the order status to 'Awaiting Fulfillment'
-        """
+    async def update_order_status(self, session: aiohttp.ClientSession, order_id: int) -> Dict[str, Any]:
+        """Update the order status to 'Awaiting Fulfillment'"""
         try:
             url = f"{self.bc_base_url}/v2/orders/{order_id}"
             payload = {
                 "status_id": 11  # 11 is the status ID for "Awaiting Fulfillment"
             }
             
-            response = requests.put(url, headers=self.bc_headers, json=payload)
-            response.raise_for_status()
-            
-            order_data = response.json()
-            logger.info(f"Successfully updated order {order_id} status to Awaiting Fulfillment")
-            return order_data
-            
-        except requests.exceptions.RequestException as e:
+            async with session.put(url, headers=self.bc_headers, json=payload) as response:
+                response.raise_for_status()
+                order_data = await response.json()
+                logger.info(f"Successfully updated order {order_id} status to Awaiting Fulfillment")
+                return order_data
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error updating order status: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def poll_b2b_order(self, order_id: int, max_retries: int = 6, delay_seconds: int = 5) -> Dict[str, Any]:
-        """
-        Poll the B2B Orders API for a specific order with retry logic
-        
-        Args:
-            order_id: The ID of the order to poll for
-            max_retries: Maximum number of retry attempts (default: 6)
-            delay_seconds: Delay between retries in seconds (default: 5)
-            
-        Returns:
-            Dict containing the B2B order data if found
-            
-        Raises:
-            Exception: If order is not found after max retries
-        """
+    async def poll_b2b_order(self, session: aiohttp.ClientSession, order_id: int, max_retries: int = 6, delay_seconds: int = 5) -> Dict[str, Any]:
+        """Poll the B2B Orders API for a specific order with retry logic"""
         for attempt in range(max_retries):
             try:
                 url = f"{self.b2b_base_url}/orders/{order_id}"
-                response = requests.get(url, headers=self.b2b_headers)
-                
-                if response.status_code == 200:
-                    order_data = response.json()
-                    logger.info(f"Successfully retrieved B2B order {order_id} on attempt {attempt + 1}")
-                    return order_data
-                elif response.status_code == 404:
-                    if attempt < max_retries - 1:
-                        logger.info(f"B2B order {order_id} not found yet. Attempt {attempt + 1} of {max_retries}. Retrying in {delay_seconds} seconds...")
-                        time.sleep(delay_seconds)
-                        continue
+                async with session.get(url, headers=self.b2b_headers) as response:
+                    if response.status == 200:
+                        order_data = await response.json()
+                        logger.info(f"Successfully retrieved B2B order {order_id} on attempt {attempt + 1}")
+                        return order_data
+                    elif response.status == 404:
+                        if attempt < max_retries - 1:
+                            logger.info(f"B2B order {order_id} not found yet. Attempt {attempt + 1} of {max_retries}. Retrying in {delay_seconds} seconds...")
+                            await asyncio.sleep(delay_seconds)
+                            continue
+                        else:
+                            raise Exception(f"B2B order {order_id} not found after {max_retries} attempts")
                     else:
-                        raise Exception(f"B2B order {order_id} not found after {max_retries} attempts")
-                else:
-                    response.raise_for_status()
-                    
-            except requests.exceptions.RequestException as e:
+                        response.raise_for_status()
+                        
+            except aiohttp.ClientError as e:
                 if attempt < max_retries - 1:
                     logger.warning(f"Error polling B2B order (attempt {attempt + 1}): {str(e)}")
-                    time.sleep(delay_seconds)
+                    await asyncio.sleep(delay_seconds)
                 else:
                     logger.error(f"Failed to retrieve B2B order after {max_retries} attempts: {str(e)}")
-                    if hasattr(e.response, 'text'):
-                        logger.error(f"Response details: {e.response.text}")
                     raise
 
-    def get_order_details(self, order_id: int) -> Dict[str, Any]:
-        """
-        Get order details from v2 Orders API
-        
-        Args:
-            order_id: The ID of the order to retrieve
-            
-        Returns:
-            Dict containing the order data
-            
-        Raises:
-            Exception: If order retrieval fails
-        """
+    async def get_order_details(self, session: aiohttp.ClientSession, order_id: int) -> Dict[str, Any]:
+        """Get order details from v2 Orders API"""
         try:
             url = f"{self.bc_base_url}/v2/orders/{order_id}"
-            response = requests.get(url, headers=self.bc_headers)
-            response.raise_for_status()
-            
-            order_data = response.json()
-            logger.info(f"Successfully retrieved order {order_id} details")
-            return order_data
-            
-        except requests.exceptions.RequestException as e:
+            async with session.get(url, headers=self.bc_headers) as response:
+                response.raise_for_status()
+                order_data = await response.json()
+                logger.info(f"Successfully retrieved order {order_id} details")
+                return order_data
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error retrieving order details: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def create_b2b_order(self, order_id: int, customer_id: int) -> Dict[str, Any]:
-        """
-        Manually create a B2B order using the B2B Orders API
-        
-        Args:
-            order_id: The BC order ID to create B2B order for
-            customer_id: The customer ID from the BC order
-            
-        Returns:
-            Dict containing the created B2B order data
-            
-        Raises:
-            Exception: If B2B order creation fails
-        """
+    async def create_b2b_order(self, session: aiohttp.ClientSession, order_id: int, customer_id: int) -> Dict[str, Any]:
+        """Manually create a B2B order using the B2B Orders API"""
         try:
             url = f"{self.b2b_base_url}/orders"
             payload = {
@@ -406,33 +332,22 @@ class BCTestFlow:
                 ]
             }
             
-            response = requests.post(url, headers=self.b2b_headers, json=payload)
-            response.raise_for_status()
-            
-            b2b_order = response.json()
-            logger.info(f"Successfully created B2B order for BC order {order_id}")
-            return b2b_order
-            
-        except requests.exceptions.RequestException as e:
+            async with session.post(url, headers=self.b2b_headers, json=payload) as response:
+                response.raise_for_status()
+                b2b_order = await response.json()
+                logger.info(f"Successfully created B2B order for BC order {order_id}")
+                return b2b_order
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error creating B2B order: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def send_to_erp(self, b2b_order: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Simulate sending order data to ERP system and receiving a response
-        
-        Args:
-            b2b_order: The B2B order data to send to ERP
-            
-        Returns:
-            Dict containing mock ERP response data
-        """
+    async def send_to_erp(self, b2b_order: Dict[str, Any]) -> Dict[str, Any]:
+        """Simulate sending order data to ERP system and receiving a response"""
         logger.info(f"Simulating sending order {b2b_order.get('id')} to ERP system")
         
         # Simulate processing delay
-        time.sleep(0.4)
+        await asyncio.sleep(0.4)
         
         # Generate mock ERP response
         erp_response = {
@@ -443,17 +358,8 @@ class BCTestFlow:
         logger.info(f"Received mock ERP response for order {b2b_order.get('id')}")
         return erp_response
 
-    def update_b2b_order(self, order_id: int, erp_response: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Update B2B order with ERP response data
-        
-        Args:
-            order_id: The ID of the order to update
-            erp_response: The ERP response data containing poNumber and extraField1
-            
-        Returns:
-            Dict containing the updated B2B order data
-        """
+    async def update_b2b_order(self, session: aiohttp.ClientSession, order_id: int, erp_response: Dict[str, Any]) -> Dict[str, Any]:
+        """Update B2B order with ERP response data"""
         try:
             url = f"{self.b2b_base_url}/orders/{order_id}"
             
@@ -470,32 +376,18 @@ class BCTestFlow:
                 ]
             }
             
-            response = requests.put(url, headers=self.b2b_headers, json=payload)
-            response.raise_for_status()
-            
-            updated_order = response.json()
-            logger.info(f"Successfully updated B2B order {order_id} with ERP data")
-            return updated_order
-            
-        except requests.exceptions.RequestException as e:
+            async with session.put(url, headers=self.b2b_headers, json=payload) as response:
+                response.raise_for_status()
+                updated_order = await response.json()
+                logger.info(f"Successfully updated B2B order {order_id} with ERP data")
+                return updated_order
+                
+        except aiohttp.ClientError as e:
             logger.error(f"Error updating B2B order: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
 
-    def verify_storefront_order(self, order_id: int) -> Dict[str, Any]:
-        """
-        Verify that the order is visible in the B2B Storefront GraphQL API
-        
-        Args:
-            order_id: The ID of the order to verify
-            
-        Returns:
-            Dict containing the verification results
-            
-        Raises:
-            Exception: If the verification fails
-        """
+    async def verify_storefront_order(self, session: aiohttp.ClientSession, order_id: int) -> Dict[str, Any]:
+        """Verify that the order is visible in the B2B Storefront GraphQL API"""
         try:
             # Get the storefront token from environment
             storefront_token = os.getenv('B2B_STOREFRONT_TOKEN')
@@ -531,7 +423,7 @@ class BCTestFlow:
             
             # Set up the variables for the query
             variables = {
-                "bcOrderId": order_id  # Send as integer instead of string
+                "bcOrderId": order_id
             }
             
             # Make the GraphQL request
@@ -540,10 +432,9 @@ class BCTestFlow:
                 "variables": variables
             }
             
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            
-            result = response.json()
+            async with session.post(url, headers=headers, json=payload) as response:
+                response.raise_for_status()
+                result = await response.json()
             
             # Check if we got any data
             if not result.get('data', {}).get('allOrders', {}).get('edges'):
@@ -573,10 +464,8 @@ class BCTestFlow:
             
             return verification_result
             
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
             logger.error(f"Error verifying order in B2B Storefront API: {str(e)}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response details: {e.response.text}")
             raise
         except Exception as e:
             logger.error(f"Unexpected error during storefront verification: {str(e)}")
@@ -591,121 +480,101 @@ async def process_single_order(
     reports_dir: str,
     order_number: Optional[int] = None
 ) -> Dict[str, Any]:
-    """
-    Process a single order through the complete flow
-    
-    Args:
-        test_flow: BCTestFlow instance
-        timing: TimingTracker instance
-        b2b_order_mode: ESL retrieval method ('default' or 'alt')
-        max_retries: Maximum number of retry attempts for polling
-        retry_delay: Delay between retries in seconds
-        reports_dir: Directory to store timing reports
-        order_number: Optional order number for logging (used in multi-order scenarios)
-    
-    Returns:
-        Dict containing the order results
-    """
+    """Process a single order through the complete flow"""
     order_prefix = f"Order {order_number}: " if order_number is not None else ""
     
     try:
-        # Create cart
-        timing.start_step('create_cart')
-        cart = test_flow.create_cart()
-        cart_id = cart['id']
-        timing.end_step('create_cart')
-        
-        # Add shipping address and get shipping options
-        timing.start_step('add_shipping_address')
-        consignment_data = test_flow.add_shipping_address(cart_id)
-        consignment_id = consignment_data['consignments'][0]['id']
-        timing.end_step('add_shipping_address')
-        
-        # Get the first available shipping option
-        shipping_option_id = consignment_data['consignments'][0]['available_shipping_options'][0]['id']
-        
-        # Update shipping option
-        timing.start_step('update_shipping_option')
-        test_flow.update_shipping_option(cart_id, consignment_id, shipping_option_id)
-        timing.end_step('update_shipping_option')
-        
-        # Add billing address
-        timing.start_step('add_billing_address')
-        test_flow.add_billing_address(cart_id)
-        timing.end_step('add_billing_address')
-        
-        # Create order
-        timing.start_step('create_order')
-        order = test_flow.create_order(cart_id)
-        order_id = order['id']
-        timing.set_order_id(order_id)
-        timing.end_step('create_order')
-        logger.info(f"{order_prefix}Order created successfully with ID: {order_id}")
-        
-        # Update order status to Awaiting Fulfillment
-        timing.start_step('update_order_status')
-        updated_order = test_flow.update_order_status(order_id)
-        timing.end_step('update_order_status')
-        logger.info(f"{order_prefix}Order {order_id} status updated successfully")
-        
-        # Handle ESL retrieval based on selected method
-        timing.start_step('esl_retrieval')
-        if b2b_order_mode == 'default':
-            logger.info(f"{order_prefix}Using default ESL retrieval method (manual B2B order creation)")
-            order_details = test_flow.get_order_details(order_id)
-            customer_id = order_details['customer_id']
-            b2b_order = test_flow.create_b2b_order(order_id, customer_id)
-            logger.info(f"{order_prefix}B2B order created successfully")
-        else:
-            logger.info(f"{order_prefix}Using alternative ESL retrieval method (polling)")
-            logger.info(f"{order_prefix}Polling configuration: max_retries={max_retries}, delay={retry_delay}s")
-            b2b_order = test_flow.poll_b2b_order(
-                order_id,
-                max_retries=max_retries,
-                delay_seconds=retry_delay
-            )
-            logger.info(f"{order_prefix}B2B order {order_id} retrieved successfully")
-        timing.end_step('esl_retrieval')
-        
-        # Send order to ERP
-        timing.start_step('erp_processing')
-        logger.info(f"{order_prefix}Starting ERP simulation for order {order_id}")
-        erp_response = test_flow.send_to_erp(b2b_order)
-        logger.info(f"{order_prefix}ERP simulation completed for order {order_id}")
-        logger.info(f"{order_prefix}ERP response: {erp_response}")
-        timing.end_step('erp_processing')
-        
-        # Update B2B order with ERP response data
-        timing.start_step('update_b2b_order')
-        logger.info(f"{order_prefix}Updating B2B order {order_id} with ERP data")
-        updated_b2b_order = test_flow.update_b2b_order(order_id, erp_response)
-        logger.info(f"{order_prefix}B2B order {order_id} updated successfully with ERP data")
-        timing.end_step('update_b2b_order')
-        
-        # Verify storefront order
-        timing.start_step('storefront_verification')
-        verification_result = test_flow.verify_storefront_order(order_id)
-        logger.info(f"{order_prefix}Storefront verification result: {verification_result}")
-        timing.end_step('storefront_verification')
-        
-        # End flow timing
-        timing.end_flow()
-        
-        # Generate and log timing summary
-        summary = timing.generate_summary()
-        logger.info(f"{order_prefix}Timing Summary:")
-        logger.info(json.dumps(summary, indent=2))
-        
-        # Save report to disk
-        timing.save_report(reports_dir)
-        
-        logger.info(f"{order_prefix}Checkout process completed successfully")
-        return {
-            'success': True,
-            'order_id': order_id,
-            'summary': summary
-        }
-        
+        async with aiohttp.ClientSession() as session:
+            # Create cart
+            timing.start_step('create_cart')
+            cart = await test_flow.create_cart(session)
+            cart_id = cart['id']
+            timing.end_step()
+            
+            # Add shipping address and get shipping options
+            timing.start_step('add_shipping_address')
+            consignment_data = await test_flow.add_shipping_address(session, cart_id)
+            consignment_id = consignment_data['consignments'][0]['id']
+            timing.end_step()
+            
+            # Get the first available shipping option
+            shipping_option_id = consignment_data['consignments'][0]['available_shipping_options'][0]['id']
+            
+            # Update shipping option
+            timing.start_step('update_shipping_option')
+            await test_flow.update_shipping_option(session, cart_id, consignment_id, shipping_option_id)
+            timing.end_step()
+            
+            # Add billing address
+            timing.start_step('add_billing_address')
+            await test_flow.add_billing_address(session, cart_id)
+            timing.end_step()
+            
+            # Create order
+            timing.start_step('create_order')
+            order = await test_flow.create_order(session, cart_id)
+            order_id = order['id']
+            timing.order_id = order_id
+            timing.end_step()
+            logger.info(f"{order_prefix}Order created successfully with ID: {order_id}")
+            
+            # Update order status to Awaiting Fulfillment
+            timing.start_step('update_order_status')
+            updated_order = await test_flow.update_order_status(session, order_id)
+            timing.end_step()
+            logger.info(f"{order_prefix}Order {order_id} status updated successfully")
+            
+            # Handle ESL retrieval based on selected method
+            timing.start_step('esl_retrieval')
+            if b2b_order_mode == 'default':
+                logger.info(f"{order_prefix}Using default ESL retrieval method (manual B2B order creation)")
+                order_details = await test_flow.get_order_details(session, order_id)
+                customer_id = order_details['customer_id']
+                b2b_order = await test_flow.create_b2b_order(session, order_id, customer_id)
+                logger.info(f"{order_prefix}B2B order created successfully")
+            else:
+                logger.info(f"{order_prefix}Using alternative ESL retrieval method (polling)")
+                logger.info(f"{order_prefix}Polling configuration: max_retries={max_retries}, delay={retry_delay}s")
+                b2b_order = await test_flow.poll_b2b_order(
+                    session,
+                    order_id,
+                    max_retries=max_retries,
+                    delay_seconds=retry_delay
+                )
+                logger.info(f"{order_prefix}B2B order {order_id} retrieved successfully")
+            timing.end_step()
+            
+            # Send order to ERP
+            timing.start_step('erp_processing')
+            logger.info(f"{order_prefix}Starting ERP simulation for order {order_id}")
+            erp_response = await test_flow.send_to_erp(b2b_order)
+            logger.info(f"{order_prefix}ERP simulation completed for order {order_id}")
+            logger.info(f"{order_prefix}ERP response: {erp_response}")
+            timing.end_step()
+            
+            # Update B2B order with ERP response data
+            timing.start_step('update_b2b_order')
+            logger.info(f"{order_prefix}Updating B2B order {order_id} with ERP data")
+            updated_b2b_order = await test_flow.update_b2b_order(session, order_id, erp_response)
+            logger.info(f"{order_prefix}B2B order {order_id} updated successfully with ERP data")
+            timing.end_step()
+            
+            # Verify storefront order
+            timing.start_step('storefront_verification')
+            verification_result = await test_flow.verify_storefront_order(session, order_id)
+            logger.info(f"{order_prefix}Storefront verification result: {verification_result}")
+            timing.end_step()
+            
+            # End flow timing
+            timing.end_flow()
+            
+            logger.info(f"{order_prefix}Checkout process completed successfully")
+            return {
+                'success': True,
+                'order_id': order_id,
+                'summary': timing.steps
+            }
+            
     except Exception as e:
         logger.error(f"{order_prefix}Error in checkout process: {str(e)}")
         return {
@@ -721,15 +590,15 @@ async def process_orders_sequential(
     retry_delay: int,
     reports_dir: str
 ) -> List[Dict[str, Any]]:
-    """
-    Process multiple orders sequentially with a delay between each order
-    """
+    """Process multiple orders sequentially with a delay between each order"""
     test_flow = BCTestFlow()
     results = []
+    batch_tracker = TimingTracker(is_batch=True)
+    batch_tracker.start_flow()
     
     for i in range(num_orders):
-        timing = TimingTracker(is_batch=True)
-        timing.start_flow()
+        timing = TimingTracker(is_batch=True, batch_start_time=batch_tracker.start_time)
+        timing.start_flow(order_number=i + 1)
         
         result = await process_single_order(
             test_flow,
@@ -746,6 +615,7 @@ async def process_orders_sequential(
             logger.info(f"Waiting {delay_seconds} seconds before next order...")
             await asyncio.sleep(delay_seconds)
     
+    batch_tracker.end_flow()
     return results
 
 async def process_orders_concurrent(
@@ -756,19 +626,19 @@ async def process_orders_concurrent(
     retry_delay: int,
     reports_dir: str
 ) -> List[Dict[str, Any]]:
-    """
-    Process multiple orders concurrently with a maximum number of concurrent orders
-    """
+    """Process multiple orders concurrently with a maximum number of concurrent orders"""
     test_flow = BCTestFlow()
     results = []
     
     # Create a semaphore to limit concurrent orders
     semaphore = asyncio.Semaphore(max_concurrent)
+    batch_tracker = TimingTracker(is_batch=True)
+    batch_tracker.start_flow()
     
     async def process_with_semaphore(order_number: int):
         async with semaphore:
-            timing = TimingTracker(is_batch=True)
-            timing.start_flow()
+            timing = TimingTracker(is_batch=True, batch_start_time=batch_tracker.start_time)
+            timing.start_flow(order_number=order_number)
             return await process_single_order(
                 test_flow,
                 timing,
@@ -787,6 +657,7 @@ async def process_orders_concurrent(
     
     # Wait for all tasks to complete
     results = await asyncio.gather(*tasks)
+    batch_tracker.end_flow()
     return results
 
 def main():
