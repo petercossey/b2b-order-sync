@@ -6,6 +6,7 @@ import logging
 import requests
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -30,7 +31,7 @@ class BCTestFlow:
         
         # Set up base URLs
         self.bc_base_url = f"https://api.bigcommerce.com/stores/{self.store_hash}"
-        self.b2b_base_url = f"https://api.bigcommerce.com/stores/{self.store_hash}"
+        self.b2b_base_url = "https://api-b2b.bigcommerce.com/api/v3/io"
         
         # Set up headers
         self.bc_headers = {
@@ -40,7 +41,7 @@ class BCTestFlow:
         }
         
         self.b2b_headers = {
-            'X-Auth-Token': self.b2b_access_token,
+            'authToken': self.b2b_access_token,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
@@ -217,6 +218,50 @@ class BCTestFlow:
                 logger.error(f"Response details: {e.response.text}")
             raise
 
+    def poll_b2b_order(self, order_id: int, max_retries: int = 4, delay_seconds: int = 5) -> Dict[str, Any]:
+        """
+        Poll the B2B Orders API for a specific order with retry logic
+        
+        Args:
+            order_id: The ID of the order to poll for
+            max_retries: Maximum number of retry attempts (default: 4)
+            delay_seconds: Delay between retries in seconds (default: 5)
+            
+        Returns:
+            Dict containing the B2B order data if found
+            
+        Raises:
+            Exception: If order is not found after max retries
+        """
+        for attempt in range(max_retries):
+            try:
+                url = f"{self.b2b_base_url}/orders/{order_id}"
+                response = requests.get(url, headers=self.b2b_headers)
+                
+                if response.status_code == 200:
+                    order_data = response.json()
+                    logger.info(f"Successfully retrieved B2B order {order_id} on attempt {attempt + 1}")
+                    return order_data
+                elif response.status_code == 404:
+                    if attempt < max_retries - 1:
+                        logger.info(f"B2B order {order_id} not found yet. Attempt {attempt + 1} of {max_retries}. Retrying in {delay_seconds} seconds...")
+                        time.sleep(delay_seconds)
+                        continue
+                    else:
+                        raise Exception(f"B2B order {order_id} not found after {max_retries} attempts")
+                else:
+                    response.raise_for_status()
+                    
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Error polling B2B order (attempt {attempt + 1}): {str(e)}")
+                    time.sleep(delay_seconds)
+                else:
+                    logger.error(f"Failed to retrieve B2B order after {max_retries} attempts: {str(e)}")
+                    if hasattr(e.response, 'text'):
+                        logger.error(f"Response details: {e.response.text}")
+                    raise
+
 def main():
     try:
         # Initialize the test flow
@@ -247,6 +292,11 @@ def main():
         # Update order status to Awaiting Fulfillment
         updated_order = test_flow.update_order_status(order_id)
         logger.info(f"Order {order_id} status updated successfully")
+        
+        # Poll B2B Orders API for the order
+        logger.info(f"Starting B2B order polling for order {order_id}")
+        b2b_order = test_flow.poll_b2b_order(order_id)
+        logger.info(f"B2B order {order_id} retrieved successfully")
         
         logger.info("Checkout process completed successfully")
         
