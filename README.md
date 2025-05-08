@@ -136,3 +136,51 @@ The batch mode reports are organized in a dedicated directory named with the bat
 - Analyzing the impact of concurrent processing
 - Tracking the timing of individual orders within a batch
 - Identifying bottlenecks in batch processing
+
+### Analyzing Timing Reports
+
+The `generate_summary.py` script provides a detailed analysis of timing reports for a specific batch or directory of reports.
+
+#### Usage
+
+```bash
+python generate_summary.py --reports <reports-directory> [--output-dir <output-directory>]
+```
+
+Example:
+```bash
+# Analyze a specific batch directory
+python generate_summary.py --reports reports/batch_2024-03-21_14-30-00
+
+# Save the summary to a specific output directory
+python generate_summary.py --reports reports/batch_2024-03-21_14-30-00 --output-dir summaries
+```
+
+#### Command Line Options
+
+- `--reports`: Directory containing timing reports to analyze (required)
+- `--output-dir`: Directory to save the summary report (optional)
+
+#### Summary Report Contents
+
+The script generates a comprehensive summary including:
+
+1. Overall Metrics:
+   - Total number of orders
+   - Success/failure counts
+   - Success rate
+   - Average, minimum, and maximum durations
+
+2. Step-by-Step Metrics:
+   - Average duration per step
+   - Minimum and maximum durations
+   - Total time spent in each step
+   - Number of executions
+
+3. Batch Metrics:
+   - Batch start time
+   - Number of orders
+   - Success/failure counts
+   - Total batch duration
+
+The summary is displayed in a human-readable format and can be saved as a JSON file for further analysis.
