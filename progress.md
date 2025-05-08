@@ -25,15 +25,15 @@
   - [x] Update order status to "Awaiting Fulfillment"
   - [x] Implement Order API integration
 - [x] Trigger ESL Retrieval
-  - [x] Implement B2B Orders API polling with retry logic (max 4 retries)
+  - [x] Implement B2B Orders API polling with retry logic (max 6 retries)
   - [x] Handle B2B order retrieval response
+- [x] Send to ERP
+  - [x] Implement ERP system simulation
+  - [x] Handle mock fulfillment details and confirmation
 
 ## Remaining Tasks ⏳
 
 ### Flow Implementation
-- [ ] Send to ERP
-  - [ ] Implement ERP system integration
-  - [ ] Handle fulfillment details and confirmation
 - [ ] Update B2B Order
   - [ ] Implement B2B Orders API patching
   - [ ] Handle ERP response integration
@@ -64,7 +64,7 @@
 - [ ] Create sample log/report output examples
 
 ## Next Steps
-1. Implement ERP system integration
+1. Implement B2B Orders API patching with ERP response
 2. Add retry logic and error handling
 3. Add command-line parameter support
 4. Create comprehensive documentation 

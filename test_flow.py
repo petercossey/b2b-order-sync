@@ -218,13 +218,13 @@ class BCTestFlow:
                 logger.error(f"Response details: {e.response.text}")
             raise
 
-    def poll_b2b_order(self, order_id: int, max_retries: int = 4, delay_seconds: int = 5) -> Dict[str, Any]:
+    def poll_b2b_order(self, order_id: int, max_retries: int = 6, delay_seconds: int = 5) -> Dict[str, Any]:
         """
         Poll the B2B Orders API for a specific order with retry logic
         
         Args:
             order_id: The ID of the order to poll for
-            max_retries: Maximum number of retry attempts (default: 4)
+            max_retries: Maximum number of retry attempts (default: 6)
             delay_seconds: Delay between retries in seconds (default: 5)
             
         Returns:
@@ -262,6 +262,30 @@ class BCTestFlow:
                         logger.error(f"Response details: {e.response.text}")
                     raise
 
+    def send_to_erp(self, b2b_order: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Simulate sending order data to ERP system and receiving a response
+        
+        Args:
+            b2b_order: The B2B order data to send to ERP
+            
+        Returns:
+            Dict containing mock ERP response data
+        """
+        logger.info(f"Simulating sending order {b2b_order.get('id')} to ERP system")
+        
+        # Simulate processing delay
+        time.sleep(0.4)
+        
+        # Generate mock ERP response
+        erp_response = {
+            "poNumber": f"PO-{b2b_order.get('id')}-{int(time.time())}",
+            "extraField1": "ERP_PROCESSED"
+        }
+        
+        logger.info(f"Received mock ERP response for order {b2b_order.get('id')}")
+        return erp_response
+
 def main():
     try:
         # Initialize the test flow
@@ -297,6 +321,12 @@ def main():
         logger.info(f"Starting B2B order polling for order {order_id}")
         b2b_order = test_flow.poll_b2b_order(order_id)
         logger.info(f"B2B order {order_id} retrieved successfully")
+        
+        # Send order to ERP
+        logger.info(f"Starting ERP simulation for order {order_id}")
+        erp_response = test_flow.send_to_erp(b2b_order)
+        logger.info(f"ERP simulation completed for order {order_id}")
+        logger.info(f"ERP response: {erp_response}")
         
         logger.info("Checkout process completed successfully")
         
