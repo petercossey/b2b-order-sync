@@ -30,13 +30,13 @@
 - [x] Send to ERP
   - [x] Implement ERP system simulation
   - [x] Handle mock fulfillment details and confirmation
+- [x] Update B2B Order
+  - [x] Implement B2B Orders API patching
+  - [x] Handle ERP response integration
 
 ## Remaining Tasks ⏳
 
 ### Flow Implementation
-- [ ] Update B2B Order
-  - [ ] Implement B2B Orders API patching
-  - [ ] Handle ERP response integration
 - [ ] Storefront Confirmation
   - [ ] Implement storefront API call for updated order info
 
@@ -64,7 +64,7 @@
 - [ ] Create sample log/report output examples
 
 ## Next Steps
-1. Implement B2B Orders API patching with ERP response
+1. Implement storefront API call for updated order info
 2. Add retry logic and error handling
 3. Add command-line parameter support
 4. Create comprehensive documentation 

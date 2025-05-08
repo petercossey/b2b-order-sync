@@ -286,6 +286,46 @@ class BCTestFlow:
         logger.info(f"Received mock ERP response for order {b2b_order.get('id')}")
         return erp_response
 
+    def update_b2b_order(self, order_id: int, erp_response: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update B2B order with ERP response data
+        
+        Args:
+            order_id: The ID of the order to update
+            erp_response: The ERP response data containing poNumber and extraField1
+            
+        Returns:
+            Dict containing the updated B2B order data
+        """
+        try:
+            url = f"{self.b2b_base_url}/orders/{order_id}"
+            
+            # Prepare the update payload
+            payload = {
+                "bcOrderId": order_id,
+                "customerId": 19,  # Hardcoded as specified
+                "poNumber": erp_response["poNumber"],
+                "extraFields": [
+                    {
+                        "fieldName": "Delivery Instructions",
+                        "fieldValue": erp_response["extraField1"]
+                    }
+                ]
+            }
+            
+            response = requests.put(url, headers=self.b2b_headers, json=payload)
+            response.raise_for_status()
+            
+            updated_order = response.json()
+            logger.info(f"Successfully updated B2B order {order_id} with ERP data")
+            return updated_order
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error updating B2B order: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Response details: {e.response.text}")
+            raise
+
 def main():
     try:
         # Initialize the test flow
@@ -327,6 +367,11 @@ def main():
         erp_response = test_flow.send_to_erp(b2b_order)
         logger.info(f"ERP simulation completed for order {order_id}")
         logger.info(f"ERP response: {erp_response}")
+        
+        # Update B2B order with ERP response data
+        logger.info(f"Updating B2B order {order_id} with ERP data")
+        updated_b2b_order = test_flow.update_b2b_order(order_id, erp_response)
+        logger.info(f"B2B order {order_id} updated successfully with ERP data")
         
         logger.info("Checkout process completed successfully")
         
