@@ -21,13 +21,13 @@
 - [x] Place Order
   - [x] Order creation from cart
   - [x] Order ID retrieval
+- [x] Process Order
+  - [x] Update order status to "Awaiting Fulfillment"
+  - [x] Implement Order API integration
 
 ## Remaining Tasks ⏳
 
 ### Flow Implementation
-- [ ] Process Order
-  - [ ] Update order status to "Awaiting Fulfillment"
-  - [ ] Implement Order API integration
 - [ ] Trigger ESL Retrieval
   - [ ] Implement B2B Orders API polling with retry logic (max 4 retries)
   - [ ] Handle B2B order retrieval response
@@ -64,7 +64,7 @@
 - [ ] Create sample log/report output examples
 
 ## Next Steps
-1. Implement the remaining API integrations (Order API, B2B Orders API)
+1. Implement B2B Orders API polling with retry logic
 2. Add retry logic and error handling
 3. Implement the ERP system simulation
 4. Add command-line parameter support

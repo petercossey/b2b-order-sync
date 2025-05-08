@@ -194,6 +194,29 @@ class BCTestFlow:
                 logger.error(f"Response details: {e.response.text}")
             raise
 
+    def update_order_status(self, order_id: int) -> Dict[str, Any]:
+        """
+        Update the order status to 'Awaiting Fulfillment'
+        """
+        try:
+            url = f"{self.bc_base_url}/v2/orders/{order_id}"
+            payload = {
+                "status_id": 11  # 11 is the status ID for "Awaiting Fulfillment"
+            }
+            
+            response = requests.put(url, headers=self.bc_headers, json=payload)
+            response.raise_for_status()
+            
+            order_data = response.json()
+            logger.info(f"Successfully updated order {order_id} status to Awaiting Fulfillment")
+            return order_data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error updating order status: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Response details: {e.response.text}")
+            raise
+
 def main():
     try:
         # Initialize the test flow
@@ -218,6 +241,12 @@ def main():
         
         # Create order
         order = test_flow.create_order(cart_id)
+        order_id = order['id']
+        logger.info(f"Order created successfully with ID: {order_id}")
+        
+        # Update order status to Awaiting Fulfillment
+        updated_order = test_flow.update_order_status(order_id)
+        logger.info(f"Order {order_id} status updated successfully")
         
         logger.info("Checkout process completed successfully")
         
