@@ -29,8 +29,9 @@
     - [x] Get order details from v2 Orders API
     - [x] Create B2B order with required extraFields
   - [x] Implement alternative flow (polling)
-    - [x] Poll B2B Orders API with retry logic (max 6 retries)
+    - [x] Poll B2B Orders API with retry logic
     - [x] Handle B2B order retrieval response
+    - [x] Add configurable retry parameters (max retries, delay)
   - [x] Add CLI parameter support for flow selection
 - [x] Send to ERP
   - [x] Implement ERP system simulation

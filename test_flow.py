@@ -400,6 +400,10 @@ def main():
     parser = argparse.ArgumentParser(description='Test BigCommerce API flow')
     parser.add_argument('--b2b-order', choices=['default', 'alt'], default='default',
                       help='ESL retrieval method: default (manual B2B order creation) or alt (polling)')
+    parser.add_argument('--max-retries', type=int, default=6,
+                      help='Maximum number of retry attempts for B2B order polling (default: 6)')
+    parser.add_argument('--retry-delay', type=int, default=5,
+                      help='Delay between retries in seconds for B2B order polling (default: 5)')
     args = parser.parse_args()
 
     try:
@@ -447,7 +451,12 @@ def main():
         else:
             # Alternative action: Poll for B2B order
             logger.info(f"Using alternative ESL retrieval method (polling)")
-            b2b_order = test_flow.poll_b2b_order(order_id)
+            logger.info(f"Polling configuration: max_retries={args.max_retries}, delay={args.retry_delay}s")
+            b2b_order = test_flow.poll_b2b_order(
+                order_id,
+                max_retries=args.max_retries,
+                delay_seconds=args.retry_delay
+            )
             logger.info(f"B2B order {order_id} retrieved successfully")
         
         # Send order to ERP
