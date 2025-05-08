@@ -20,88 +20,89 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class TimingTracker:
-    def __init__(self):
-        self.steps = {}
+    def __init__(self, reports_dir="reports", is_batch=False, batch_start_time=None):
+        self.reports_dir = reports_dir
+        self.is_batch = is_batch
+        self.batch_start_time = batch_start_time or datetime.now()
         self.start_time = None
         self.end_time = None
+        self.steps = {}
+        self.current_step = None
+        self.current_step_start = None
         self.order_id = None
+        self.order_number = None
 
-    def set_order_id(self, order_id: int):
-        """Set the order ID for report naming"""
-        self.order_id = order_id
-
-    def start_step(self, step_name: str):
-        """Record the start time of a step"""
-        self.steps[step_name] = {
-            'start': datetime.now(),
-            'end': None,
-            'duration': None
-        }
-
-    def end_step(self, step_name: str):
-        """Record the end time of a step and calculate duration"""
-        if step_name in self.steps:
-            self.steps[step_name]['end'] = datetime.now()
-            duration = self.steps[step_name]['end'] - self.steps[step_name]['start']
-            self.steps[step_name]['duration'] = duration.total_seconds()
-
-    def start_flow(self):
-        """Record the start time of the entire flow"""
+    def start_flow(self, order_id=None, order_number=None):
+        """Start timing the entire flow."""
         self.start_time = datetime.now()
+        self.order_id = order_id
+        self.order_number = order_number
+        logger.info(f"Starting timing for {'batch' if self.is_batch else 'single'} order flow")
+
+    def start_step(self, step_name):
+        """Start timing a specific step."""
+        if self.current_step:
+            self.end_step()
+        self.current_step = step_name
+        self.current_step_start = datetime.now()
+        logger.info(f"Starting step: {step_name}")
+
+    def end_step(self):
+        """End timing for the current step."""
+        if self.current_step and self.current_step_start:
+            duration = (datetime.now() - self.current_step_start).total_seconds()
+            self.steps[self.current_step] = {
+                "start": self.current_step_start.isoformat(),
+                "end": datetime.now().isoformat(),
+                "duration": duration
+            }
+            logger.info(f"Completed step: {self.current_step} (Duration: {duration:.2f}s)")
+            self.current_step = None
+            self.current_step_start = None
 
     def end_flow(self):
-        """Record the end time of the entire flow"""
+        """End timing the entire flow and save the report."""
         self.end_time = datetime.now()
-
-    def generate_summary(self) -> Dict[str, Any]:
-        """Generate a summary of all timing information"""
-        if not self.start_time or not self.end_time:
-            return {}
-
-        total_duration = (self.end_time - self.start_time).total_seconds()
+        if self.current_step:
+            self.end_step()
         
-        summary = {
-            'flow_start': self.start_time.isoformat(),
-            'flow_end': self.end_time.isoformat(),
-            'total_duration_seconds': total_duration,
-            'order_id': self.order_id,
-            'steps': {}
+        total_duration = (self.end_time - self.start_time).total_seconds()
+        logger.info(f"Completed order flow (Total Duration: {total_duration:.2f}s)")
+
+        # Create report data
+        report_data = {
+            "order_id": self.order_id,
+            "order_number": self.order_number,
+            "flow_start": self.start_time.isoformat(),
+            "flow_end": self.end_time.isoformat(),
+            "total_duration": total_duration,
+            "steps": self.steps
         }
 
-        for step_name, timing in self.steps.items():
-            summary['steps'][step_name] = {
-                'start': timing['start'].isoformat(),
-                'end': timing['end'].isoformat() if timing['end'] else None,
-                'duration_seconds': timing['duration']
-            }
+        # Determine report directory structure
+        if self.is_batch:
+            # For batch tests, use batch_YYYY-MM-DD_HH-MM-SS format
+            batch_dir = f"batch_{self.batch_start_time.strftime('%Y-%m-%d_%H-%M-%S')}"
+            report_dir = os.path.join(self.reports_dir, batch_dir)
+        else:
+            # For single orders, use YYYY-MM-DD format
+            date_dir = self.start_time.strftime("%Y-%m-%d")
+            report_dir = os.path.join(self.reports_dir, date_dir)
 
-        return summary
+        # Create directory if it doesn't exist
+        os.makedirs(report_dir, exist_ok=True)
 
-    def save_report(self, output_dir: str = 'reports'):
-        """Save the timing report to disk"""
-        if not self.start_time or not self.end_time:
-            logger.warning("Cannot save report: flow timing not complete")
-            return
-
-        # Create reports directory if it doesn't exist
-        reports_dir = pathlib.Path(output_dir)
-        reports_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create date-based subdirectory
-        date_dir = reports_dir / self.start_time.strftime('%Y-%m-%d')
-        date_dir.mkdir(exist_ok=True)
-
-        # Generate filename with timestamp and order ID
-        timestamp = self.start_time.strftime('%H-%M-%S')
-        filename = f"order_{self.order_id}_{timestamp}.json"
-        filepath = date_dir / filename
-
-        # Generate and save the report
-        summary = self.generate_summary()
-        with open(filepath, 'w') as f:
-            json.dump(summary, f, indent=2)
-
-        logger.info(f"Timing report saved to: {filepath}")
+        # Generate filename with order number and timestamp
+        timestamp = self.start_time.strftime("%H-%M-%S")
+        filename = f"order_{self.order_number}_{timestamp}.json" if self.order_number else f"order_{self.order_id}_{timestamp}.json"
+        
+        # Save report
+        report_path = os.path.join(report_dir, filename)
+        with open(report_path, "w") as f:
+            json.dump(report_data, f, indent=2)
+        
+        logger.info(f"Timing report saved to: {report_path}")
+        return report_path
 
 class BCTestFlow:
     def __init__(self):
@@ -727,7 +728,7 @@ async def process_orders_sequential(
     results = []
     
     for i in range(num_orders):
-        timing = TimingTracker()
+        timing = TimingTracker(is_batch=True)
         timing.start_flow()
         
         result = await process_single_order(
@@ -766,7 +767,7 @@ async def process_orders_concurrent(
     
     async def process_with_semaphore(order_number: int):
         async with semaphore:
-            timing = TimingTracker()
+            timing = TimingTracker(is_batch=True)
             timing.start_flow()
             return await process_single_order(
                 test_flow,

@@ -104,20 +104,35 @@ The script verifies that orders are visible in the B2B Storefront by:
 
 ### Timing Reports
 
-The script generates detailed timing reports for each order, stored in the `reports` directory (configurable via `--reports-dir`). Reports are organized by date and include:
-- Order ID
-- Flow start and end times
-- Total duration
-- Step-by-step timing information
+The script generates detailed timing reports for each order, stored in the `reports` directory (configurable via `--reports-dir`). Reports are organized differently based on the processing mode:
 
-Example report structure:
+1. Single Order Mode:
 ```
 reports/
 ├── 2024-03-21/
 │   ├── order_123_10-00-00.json
-│   ├── order_124_10-15-30.json
-│   └── order_125_11-45-20.json
+│   └── order_124_10-15-30.json
 └── ...
 ```
 
-Each report file contains detailed timing information for each step in the order flow, helping to identify bottlenecks and measure performance.
+2. Batch Mode (Sequential or Concurrent):
+```
+reports/
+├── batch_2024-03-21_14-30-00/
+│   ├── order_1_14-30-05.json
+│   ├── order_2_14-30-15.json
+│   └── order_3_14-30-25.json
+└── ...
+```
+
+Each report file contains:
+- Order ID and number
+- Flow start and end times
+- Total duration
+- Step-by-step timing information
+
+The batch mode reports are organized in a dedicated directory named with the batch start time, making it easy to analyze the performance of multiple orders processed together. This structure helps in:
+- Comparing performance across different batch runs
+- Analyzing the impact of concurrent processing
+- Tracking the timing of individual orders within a batch
+- Identifying bottlenecks in batch processing
