@@ -25,8 +25,13 @@
   - [x] Update order status to "Awaiting Fulfillment"
   - [x] Implement Order API integration
 - [x] Trigger ESL Retrieval
-  - [x] Implement B2B Orders API polling with retry logic (max 6 retries)
-  - [x] Handle B2B order retrieval response
+  - [x] Implement default flow (manual B2B order creation)
+    - [x] Get order details from v2 Orders API
+    - [x] Create B2B order with required extraFields
+  - [x] Implement alternative flow (polling)
+    - [x] Poll B2B Orders API with retry logic (max 6 retries)
+    - [x] Handle B2B order retrieval response
+  - [x] Add CLI parameter support for flow selection
 - [x] Send to ERP
   - [x] Implement ERP system simulation
   - [x] Handle mock fulfillment details and confirmation
@@ -41,9 +46,6 @@
   - [ ] Implement storefront API call for updated order info
 
 ### Additional Features
-- [ ] Command-line parameter support
-  - [ ] Add argparse implementation
-  - [ ] Support for endpoint URLs, tokens, data file paths
 - [ ] Enhanced Error Handling
   - [ ] Implement comprehensive error handling for all API calls
   - [ ] Add detailed logging for request/response data
@@ -66,5 +68,4 @@
 ## Next Steps
 1. Implement storefront API call for updated order info
 2. Add retry logic and error handling
-3. Add command-line parameter support
-4. Create comprehensive documentation 
+3. Create comprehensive documentation 

@@ -26,8 +26,14 @@ This script will simulate and test a complete e-commerce order processing flow, 
    - Update order status via Order API to "Awaiting Fulfillment."
 
 4. **Trigger ESL Retrieval**
-   - Poll B2B Orders API for the new order (max 4 retries).
-   - Handle B2B order retrieval response.
+   - Default Action (Manual B2B Order Creation):
+     - Retrieve order details from v2 Orders API using order ID from previous step
+     - Create B2B order using B2B Orders API Create Order endpoint
+     - Use order ID and customer ID from v2 order response
+   - Alternative Action (Poll for B2B Order):
+     - Poll B2B Orders API for the new order (max 4 retries)
+     - Handle B2B order retrieval response
+   - Note: Action selection controlled via CLI parameter (--b2b-order)
 
 5. **Send to ERP**
    - Send order data to ERP platform.

@@ -4,6 +4,7 @@ import os
 import json
 import logging
 import requests
+import argparse
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional
 import time
@@ -262,6 +263,74 @@ class BCTestFlow:
                         logger.error(f"Response details: {e.response.text}")
                     raise
 
+    def get_order_details(self, order_id: int) -> Dict[str, Any]:
+        """
+        Get order details from v2 Orders API
+        
+        Args:
+            order_id: The ID of the order to retrieve
+            
+        Returns:
+            Dict containing the order data
+            
+        Raises:
+            Exception: If order retrieval fails
+        """
+        try:
+            url = f"{self.bc_base_url}/v2/orders/{order_id}"
+            response = requests.get(url, headers=self.bc_headers)
+            response.raise_for_status()
+            
+            order_data = response.json()
+            logger.info(f"Successfully retrieved order {order_id} details")
+            return order_data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error retrieving order details: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Response details: {e.response.text}")
+            raise
+
+    def create_b2b_order(self, order_id: int, customer_id: int) -> Dict[str, Any]:
+        """
+        Manually create a B2B order using the B2B Orders API
+        
+        Args:
+            order_id: The BC order ID to create B2B order for
+            customer_id: The customer ID from the BC order
+            
+        Returns:
+            Dict containing the created B2B order data
+            
+        Raises:
+            Exception: If B2B order creation fails
+        """
+        try:
+            url = f"{self.b2b_base_url}/orders"
+            payload = {
+                "bcOrderId": order_id,
+                "customerId": customer_id,
+                "extraFields": [
+                    {
+                        "fieldName": "Delivery Instructions",
+                        "fieldValue": "TBD"
+                    }
+                ]
+            }
+            
+            response = requests.post(url, headers=self.b2b_headers, json=payload)
+            response.raise_for_status()
+            
+            b2b_order = response.json()
+            logger.info(f"Successfully created B2B order for BC order {order_id}")
+            return b2b_order
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error creating B2B order: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Response details: {e.response.text}")
+            raise
+
     def send_to_erp(self, b2b_order: Dict[str, Any]) -> Dict[str, Any]:
         """
         Simulate sending order data to ERP system and receiving a response
@@ -327,6 +396,12 @@ class BCTestFlow:
             raise
 
 def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description='Test BigCommerce API flow')
+    parser.add_argument('--b2b-order', choices=['default', 'alt'], default='default',
+                      help='ESL retrieval method: default (manual B2B order creation) or alt (polling)')
+    args = parser.parse_args()
+
     try:
         # Initialize the test flow
         test_flow = BCTestFlow()
@@ -357,10 +432,23 @@ def main():
         updated_order = test_flow.update_order_status(order_id)
         logger.info(f"Order {order_id} status updated successfully")
         
-        # Poll B2B Orders API for the order
-        logger.info(f"Starting B2B order polling for order {order_id}")
-        b2b_order = test_flow.poll_b2b_order(order_id)
-        logger.info(f"B2B order {order_id} retrieved successfully")
+        # Handle ESL retrieval based on selected method
+        if args.b2b_order == 'default':
+            # Default action: Manually create B2B order
+            logger.info(f"Using default ESL retrieval method (manual B2B order creation)")
+            
+            # Get order details from v2 Orders API
+            order_details = test_flow.get_order_details(order_id)
+            customer_id = order_details['customer_id']
+            
+            # Create B2B order
+            b2b_order = test_flow.create_b2b_order(order_id, customer_id)
+            logger.info(f"B2B order created successfully")
+        else:
+            # Alternative action: Poll for B2B order
+            logger.info(f"Using alternative ESL retrieval method (polling)")
+            b2b_order = test_flow.poll_b2b_order(order_id)
+            logger.info(f"B2B order {order_id} retrieved successfully")
         
         # Send order to ERP
         logger.info(f"Starting ERP simulation for order {order_id}")
@@ -376,7 +464,7 @@ def main():
         logger.info("Checkout process completed successfully")
         
     except Exception as e:
-        logger.error(f"Test flow failed: {str(e)}")
+        logger.error(f"Error in checkout process: {str(e)}")
         raise
 
 if __name__ == "__main__":
