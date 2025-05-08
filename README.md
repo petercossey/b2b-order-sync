@@ -25,7 +25,7 @@ Significant portions of this codebase were generated with the assistance of AI c
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd b2b-order-flow
+cd b2b-order-sync-test
 ```
 
 2. Create and activate a virtual environment:
