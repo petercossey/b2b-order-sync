@@ -2,6 +2,14 @@
 
 A Python script for testing end-to-end order processing flows in BigCommerce B2B Edition, including storefront, internal APIs, enterprise service layer (ESL), and ERP system integration.
 
+## Disclaimer
+
+This program is provided as-is, without any warranties or guarantees of any kind, express or implied. It is intended as a proof of concept only. The authors accept no liability for any data loss or other damages resulting from its use.
+
+## AI Attribution
+
+Significant portions of this codebase were generated with the assistance of AI coding tools. While efforts have been made to verify the code's functionality, users should review and test thoroughly before use in any critical environments.
+
 ## Getting Started
 
 ### Prerequisites
