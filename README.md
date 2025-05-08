@@ -36,8 +36,10 @@ pip install -r requirements.txt
 BC_STORE_HASH=your_store_hash
 BC_ACCESS_TOKEN=your_access_token
 B2B_ACCESS_TOKEN=your_b2b_access_token
-B2B_STOREFRONT_TOKEN=your_b2b_storefront_token
+B2B_STOREFRONT_TOKEN=your_b2b_storefront_token  # Must be generated for customer_id 19 (used in test data)
 ```
+
+> **Important**: The `B2B_STOREFRONT_TOKEN` must be generated for customer_id 19, which is the customer used in the test data (`cart-payload.json`). This ensures that the storefront verification can access the order data for the test customer.
 
 ### Usage
 
