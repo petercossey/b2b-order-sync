@@ -17,7 +17,7 @@ A Python script for testing end-to-end order processing flows in BigCommerce B2B
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd e2e-b2b-order-flow
+cd b2b-order-flow
 ```
 
 2. Create and activate a virtual environment:
