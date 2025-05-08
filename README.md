@@ -36,6 +36,7 @@ pip install -r requirements.txt
 BC_STORE_HASH=your_store_hash
 BC_ACCESS_TOKEN=your_access_token
 B2B_ACCESS_TOKEN=your_b2b_access_token
+B2B_STOREFRONT_TOKEN=your_b2b_storefront_token
 ```
 
 ### Usage
@@ -69,7 +70,12 @@ The script simulates the following order processing flow:
 4. Trigger ESL Retrieval (manual creation or polling)
 5. Send to ERP
 6. Update B2B Order
-7. Storefront Confirmation (coming soon)
+7. Storefront Confirmation
+
+The script verifies that orders are visible in the B2B Storefront by:
+- Querying the B2B Storefront GraphQL API
+- Verifying the presence of required fields (createdAt, updatedAt, companyName)
+- Providing detailed logging of the verification process
 
 ### Command Line Options
 

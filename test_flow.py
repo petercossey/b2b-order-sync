@@ -395,6 +395,105 @@ class BCTestFlow:
                 logger.error(f"Response details: {e.response.text}")
             raise
 
+    def verify_storefront_order(self, order_id: int) -> Dict[str, Any]:
+        """
+        Verify that the order is visible in the B2B Storefront GraphQL API
+        
+        Args:
+            order_id: The ID of the order to verify
+            
+        Returns:
+            Dict containing the verification results
+            
+        Raises:
+            Exception: If the verification fails
+        """
+        try:
+            # Get the storefront token from environment
+            storefront_token = os.getenv('B2B_STOREFRONT_TOKEN')
+            if not storefront_token:
+                raise ValueError("B2B_STOREFRONT_TOKEN environment variable is not set")
+
+            # Set up GraphQL endpoint and headers
+            url = "https://api-b2b.bigcommerce.com/graphql"
+            headers = {
+                'Authorization': f'Bearer {storefront_token}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+
+            # Construct the GraphQL query
+            query = """
+            query AllOrders($bcOrderId: Decimal!) {
+                allOrders(bcOrderId: $bcOrderId) {
+                    totalCount
+                    edges {
+                        cursor
+                        node {
+                            id
+                            createdAt
+                            updatedAt
+                            bcOrderId
+                            companyName
+                        }
+                    }
+                }
+            }
+            """
+            
+            # Set up the variables for the query
+            variables = {
+                "bcOrderId": order_id  # Send as integer instead of string
+            }
+            
+            # Make the GraphQL request
+            payload = {
+                "query": query,
+                "variables": variables
+            }
+            
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            # Check if we got any data
+            if not result.get('data', {}).get('allOrders', {}).get('edges'):
+                logger.warning(f"Order {order_id} not found in B2B Storefront API")
+                return {
+                    "success": False,
+                    "message": "Order not found in B2B Storefront API",
+                    "data": None
+                }
+            
+            # Get the order data from the first edge
+            order_data = result['data']['allOrders']['edges'][0]['node']
+            
+            # Verify the required fields
+            verification_result = {
+                "success": True,
+                "message": "Order found in B2B Storefront API",
+                "data": {
+                    "createdAt": order_data.get('createdAt'),
+                    "updatedAt": order_data.get('updatedAt'),
+                    "companyName": order_data.get('companyName')
+                }
+            }
+            
+            logger.info(f"Successfully verified order {order_id} in B2B Storefront API")
+            logger.info(f"Verification details: {json.dumps(verification_result, indent=2)}")
+            
+            return verification_result
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error verifying order in B2B Storefront API: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Response details: {e.response.text}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during storefront verification: {str(e)}")
+            raise
+
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Test BigCommerce API flow')
@@ -469,6 +568,10 @@ def main():
         logger.info(f"Updating B2B order {order_id} with ERP data")
         updated_b2b_order = test_flow.update_b2b_order(order_id, erp_response)
         logger.info(f"B2B order {order_id} updated successfully with ERP data")
+        
+        # Verify storefront order
+        verification_result = test_flow.verify_storefront_order(order_id)
+        logger.info(f"Storefront verification result: {verification_result}")
         
         logger.info("Checkout process completed successfully")
         

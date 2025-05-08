@@ -39,6 +39,11 @@
 - [x] Update B2B Order
   - [x] Implement B2B Orders API patching
   - [x] Handle ERP response integration
+- [x] Storefront Confirmation
+  - [x] Implement storefront API call for updated order info
+  - [x] Add GraphQL query for order verification
+  - [x] Implement verification of required fields (createdAt, updatedAt, companyName)
+  - [x] Add error handling for missing orders
 
 ## Remaining Tasks ⏳
 
