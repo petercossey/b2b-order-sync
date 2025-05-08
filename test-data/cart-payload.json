@@ -1,0 +1,14 @@
+{
+    "customer_id": 19,
+    "line_items": [
+        {
+            "quantity": 1,
+            "product_id": 1522
+        }
+    ],
+    "channel_id": 1,
+    "currency": {
+        "code": "AUD"
+    },
+    "locale": "en-US"
+} 
