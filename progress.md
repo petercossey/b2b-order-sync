@@ -47,6 +47,20 @@
   - [x] Fix GraphQL type mismatch for bcOrderId parameter
   - [x] Add customer_id validation for B2B_STOREFRONT_TOKEN
 
+### Additional Features
+- [x] Concurrent Order Processing
+  - [x] Add support for multiple order processing modes
+    - [x] Single order (default)
+    - [x] Sequential orders with configurable delay
+    - [x] Concurrent orders with max parallel limit
+  - [x] Implement concurrent order processing using asyncio
+  - [x] Add CLI parameters for mode selection and configuration
+    - [x] --mode parameter (single/sequential/concurrent) 
+    - [x] --num-orders parameter for batch size
+    - [x] --delay parameter for sequential mode
+    - [x] --max-concurrent parameter for concurrent mode
+  - [x] Add timing reports for performance analysis
+
 ### Documentation
 - [x] Create comprehensive README
   - [x] Add setup instructions
