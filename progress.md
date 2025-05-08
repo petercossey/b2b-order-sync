@@ -44,12 +44,10 @@
   - [x] Add GraphQL query for order verification
   - [x] Implement verification of required fields (createdAt, updatedAt, companyName)
   - [x] Add error handling for missing orders
+  - [x] Fix GraphQL type mismatch for bcOrderId parameter
+  - [x] Add customer_id validation for B2B_STOREFRONT_TOKEN
 
 ## Remaining Tasks ⏳
-
-### Flow Implementation
-- [ ] Storefront Confirmation
-  - [ ] Implement storefront API call for updated order info
 
 ### Additional Features
 - [ ] Enhanced Error Handling
@@ -72,6 +70,6 @@
 - [ ] Create sample log/report output examples
 
 ## Next Steps
-1. Implement storefront API call for updated order info
-2. Add retry logic and error handling
-3. Create comprehensive documentation 
+1. Implement enhanced error handling and retry logic
+2. Add comprehensive reporting functionality
+3. Create sample configuration files 
