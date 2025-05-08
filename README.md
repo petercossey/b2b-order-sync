@@ -1,4 +1,4 @@
-# BigCommerce B2B Order Flow Testing Script
+# BigCommerce B2B Order Sync Testing Script
 
 A Python script for testing end-to-end order processing flows in BigCommerce B2B Edition, including storefront, internal APIs, enterprise service layer (ESL), and ERP system integration.
 
